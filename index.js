@@ -48,6 +48,7 @@ const updateAssetTags = async (variables) => {
                 url
                 fileName
                 id
+                smartTags
             }
         }
     `;
@@ -68,8 +69,9 @@ const ApplyAssetTagsFromImagga = async (asset) => {
         var assetURL = asset.url;
         var fileName = asset.fileName;
         var assetId = asset.id;
+        var smartTags = asset.smartTags;
         
-        if(fileName.endsWith(".jpg") || fileName.endsWith(".png")){
+        if(fileName.endsWith(".jpg") || fileName.endsWith(".png")|| fileName.endsWith(".jpeg") || fileName.endsWith(".webp")){
             axios.get('https://api.imagga.com/v2/tags?image_url=' + assetURL + '&threshold=25')
                 .then(response => {
                     ApplyTags(response.data.result.tags, asset);
@@ -84,12 +86,14 @@ const ApplyAssetTagsFromImagga = async (asset) => {
 const ApplyTags = async (tagArray, asset, treshold = 20.0) => {
     console.log("Apply tags");
 
-    var tags = [];
+    var tags = asset.smartTags;
     var id = asset.id;
+    var shouldMutate = false;
     
     tagArray.forEach((value, index, array)=>{
-        if(value.confidence >= treshold){
+        if(value.confidence >= treshold && !asset.smartTags.includes(value.tag.en)){
             tags.push(value.tag.en);
+            shouldMutate = true;
         }
     });
 
@@ -104,8 +108,11 @@ const ApplyTags = async (tagArray, asset, treshold = 20.0) => {
       }
     `;
     try {
-      var { assetResult } = await hygraph.request(mutation, { id, tags });
-      console.log("mutation sent");
+
+      if(shouldMutate){
+        var { assetResult } = await hygraph.request(mutation, { id, tags });
+        console.log("mutation sent");
+      }
     }
     catch(error){
       console.error(error);
